@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bootstrap demo</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  </head>
+  <body>
+
+                                <!-- Modal -->
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h1 class="modal-title fs-5" id="exampleModalLabel">мой тайтл</h1>
+              </div>
+              <div class="modal-body">
+
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+
+            <!--Tables-->
+    <div class="container mt-5">
+      <div class="pt-2">
+        <table class="table table-striped mt-40">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Email</th>
+            </tr>
+          </thead>
+          <tbody class="output"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="container mt-5">
+        <h1>Добавление пользователя</h1>
+        <form id="createUserForm">
+            <input type="text" name="name" id="name" placeholder="Введите имя" class="form-control w-50"><br>
+            <input type="text" name="email" id="email" placeholder="Введите email" class="form-control w-50" ><br>
+            <input type="submit" class="btn btn-success" value="Добавить">
+        </form>
+    </div>
+    <div id="formError" class="text-danger mt-2 text-center"></div>
+    <div id="linksContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+
+      async function main() {
+        let response = await fetch('/users')
+        let users = await response.json()
+
+        let output = document.querySelector('.output')
+        output.innerHTML = ''
+        let links = document.getElementById('linksContainer')
+        links.innerHTML = ''
+
+
+<!--       Ссылка на json /users-->
+        if (users.length) {
+          let a = document.createElement('a')
+          a.href = '/users'
+          a.textContent = 'Перейти на /users'
+          a.style.display = 'block'
+          a.className = 'btn btn-link'
+          links.appendChild(a)
+        }
+
+<!--        Добавление пользователей в таблицу-->
+        users.forEach(user => {
+
+            let row = document.createElement('tr')
+            row.style.cursor = "pointer"
+            row.dataset.id = user.id
+
+            row.innerHTML = `
+                <td>${user.name}</td>
+                <td>${user.email}</td>
+            `
+<!--            Добавление ссылок на json /users/id-->
+            let a = document.createElement('a')
+            a.href = `/users/${user.id}`
+            a.textContent = `Перейти на /users/${user.id}`
+            a.className = 'btn btn-link'
+            a.style.display = 'block'
+            links.insertBefore(a, links.firstChild)
+
+
+<!--            Модальное окно по клику на пользователя-->
+            row.addEventListener('click', async () => {
+
+                let response = await fetch(`/users/${user.id}`)
+                let data = await response.json()
+
+                let modalTitle = document.getElementById('exampleModalLabel')
+                let modalBody = document.querySelector('#exampleModal .modal-body')
+                let modalFooter = document.querySelector('#exampleModal .modal-footer')
+
+                let oldDeleteBtn = modalFooter.querySelector('.btn-danger')
+                if (oldDeleteBtn) {
+                    oldDeleteBtn.remove()
+                }
+
+                let buttonDelete = document.createElement('button')
+                buttonDelete.className = 'btn btn-danger'
+                buttonDelete.textContent = 'Удалить'
+
+                buttonDelete.addEventListener('click', async () => {
+                    await fetch(`/users/${data[0].id}/delete`)
+                    modal.hide()
+                    main()
+                })
+
+                let closeBtn = modalFooter.querySelector('.btn-secondary')
+                modalFooter.insertBefore(buttonDelete, closeBtn)
+
+                modalTitle.textContent = `User: ${data[0].name}`
+                modalBody.innerHTML = `
+                  <p><strong>Email:</strong> ${data[0].email}</p>
+                  <p><strong>Id:</strong> ${data[0].id}</p>
+                `
+
+                let modal = new bootstrap.Modal(document.getElementById('exampleModal'))
+                modal.show()
+            })
+
+            output.appendChild(row)
+        })
+      }
+
+<!--      Добавление через форму-->
+      document.getElementById('createUserForm').addEventListener('submit', async function(e) {
+          e.preventDefault()
+
+          const formData = new FormData(this);
+
+          const response = await fetch('/create-user', {
+              method: 'POST',
+              body: formData
+          })
+
+          const result = await response.json();
+
+          if (response.ok) {
+              this.reset()
+              main()
+          } else {
+              showError(result.description)
+          }
+      });
+
+<!--        Обработка ошибок-->
+        function showError(description) {
+            const errorDiv = document.getElementById('formError')
+            errorDiv.innerHTML = ''
+
+            if (Array.isArray(description)) {
+                description.forEach(err => {
+                    errorDiv.innerHTML += `<p>${err.message}</p>`
+                })
+            } else {
+                errorDiv.textContent = description
+            }
+            setTimeout(() => { errorDiv.textContent = ''; }, 3000)
+        };
+
+      main()
+
+
+    </script>
+  </body>
+<footer class="text-center py-3">
+  <a href="/about">/about</a>
+</footer>
+</html>
